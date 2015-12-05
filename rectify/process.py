@@ -1,43 +1,25 @@
-from PIL import Image
-from PIL.ImageOps import flip, grayscale
-
 from pprint import pprint as pp
 
+from PIL import Image
+from PIL.Image import QUAD, BICUBIC
+from PIL.ImageDraw import Draw
+from PIL.ImageOps import flip, grayscale, crop
 from asq.initiators import query
 from asq.selectors import a_
+from euclidian.cartesian2 import Line2, intersection2
 
-import rectify.asqext
+from rectify.mountdetector import find_mount_top_boundary, find_mount_bottom_boundary, find_mount_left_boundary, \
+    find_mount_right_boundary
 from rectify.peakdetector import find_peak_base
 
 
-def is_minima(a, b, c):
-    """True if the series a, b, c has its minimum at b."""
-    return b < a and b < c
-
-def is_maxima(a, b, c):
-    """True if the series a, b, c has its maximum at b."""
-    return b > a and b > c
 
 
-def find_indexed_element_for_first_minimum(histogram):
-    return query(histogram)                              \
-           .copy_padded_triples()                        \
-           .select_with_index()                          \
-           .where(lambda item: is_minima(*item.element)) \
-           .select(a_('index'))                          \
-           .first_or_default(0)
+def draw_cross(context, position, radius, **kwargs):
+    context.line((position.x - radius, position.y, position.x + radius, position.y), **kwargs)
+    context.line((position.x, position.y - radius, position.x, position.y + radius), **kwargs)
 
-
-def find_indexed_element_for_first_maximum(histogram):
-    return query(histogram)                               \
-            .copy_padded_triples()                        \
-            .select_with_index()                          \
-            .where(lambda item: is_maxima(*item.element)) \
-            .select(a_('index'))                          \
-            .first_or_default(0)
-
-
-def process_image_file(input_filepath, output_filepath):
+def process_image_file(input_filepath, output_filepath, threshold):
     """Rotate and crop image.
 
     Args:
@@ -53,23 +35,63 @@ def process_image_file(input_filepath, output_filepath):
     print(input_image.format, input_image.size, input_image.mode)
     flipped_image = flip(input_image)
     gray_image = grayscale(flipped_image)
-    gray_image.save(output_filepath)
-    histogram = gray_image.histogram()
-    pp(len(histogram))
+    top_boundary_start, top_boundary_end = find_mount_top_boundary(gray_image, threshold)
+    bottom_boundary_start, bottom_boundary_end = find_mount_bottom_boundary(gray_image, threshold)
+    left_boundary_start, left_boundary_end = find_mount_left_boundary(gray_image, threshold)
+    right_boundary_start, right_boundary_end = find_mount_right_boundary(gray_image, threshold)
 
-    # Find first minimum in grayscale histogram
-    # Find base of dark spike to determine border threshhold
-    first_minimum_index = find_indexed_element_for_first_minimum(histogram)
-    print("first_minimum_index", first_minimum_index)
-    first_maximum_index = find_indexed_element_for_first_maximum(histogram)
-    print("first_maximum_index", first_maximum_index)
-    pp(histogram)
+    boundary_image = flipped_image.copy()
+    draw = Draw(boundary_image)
+    draw.line((top_boundary_start.x, top_boundary_start.y, top_boundary_end.x, top_boundary_end.y), fill=(255, 255, 0), width=3)
+    draw.line((bottom_boundary_start.x, bottom_boundary_start.y, bottom_boundary_end.x, bottom_boundary_end.y), fill=(255, 255, 0), width=3)
+    draw.line((left_boundary_start.x, left_boundary_start.y, left_boundary_end.x, left_boundary_end.y), fill=(0, 255, 255), width=3)
+    draw.line((right_boundary_start.x, right_boundary_start.y, right_boundary_end.x, right_boundary_end.y), fill=(0, 255, 255), width=3)
 
-    # Find first peak
-    peak_base = find_peak_base(histogram, first_minimum_index, first_maximum_index)
-    print(peak_base)
+    top_boundary_line = Line2.through_points(top_boundary_start, top_boundary_end)
+    bottom_boundary_line = Line2.through_points(bottom_boundary_start, bottom_boundary_end)
+    left_boundary_line = Line2.through_points(left_boundary_start, left_boundary_end)
+    right_boundary_line = Line2.through_points(right_boundary_start, right_boundary_end)
 
-    thresholded_image = gray_image.point(lambda p: 0 if p <= peak_base else p)
-    th = thresholded_image.histogram()
-    pp(th)
-    thresholded_image.save(output_filepath)
+    top_left_corner = intersection2(top_boundary_line, left_boundary_line)
+    top_right_corner = intersection2(top_boundary_line, right_boundary_line)
+    bottom_left_corner = intersection2(bottom_boundary_line, left_boundary_line)
+    bottom_right_corner = intersection2(bottom_boundary_line, right_boundary_line)
+
+    draw_cross(draw, top_left_corner, radius=20, width=3, fill=(255, 0, 0))
+    draw_cross(draw, top_right_corner, radius=20, width=3, fill=(255, 0, 0))
+    draw_cross(draw, bottom_left_corner, radius=20, width=3, fill=(255, 0, 0))
+    draw_cross(draw, bottom_right_corner, radius=20, width=3, fill=(255, 0, 0))
+
+    boundary_image.save(output_filepath.replace('.jpg', '_boundary.jpg'))
+
+    print(top_left_corner)
+    print(top_right_corner)
+    print(bottom_left_corner)
+    print(bottom_right_corner)
+    dist_diagonal1 = top_left_corner.distance_to(bottom_right_corner)
+    dist_diagonal2 = top_right_corner.distance_to(bottom_left_corner)
+    dist_top = top_left_corner.distance_to(top_right_corner)
+    dist_bottom = bottom_left_corner.distance_to(bottom_right_corner)
+    dist_left = top_left_corner.distance_to(bottom_left_corner)
+    dist_right = top_right_corner.distance_to(bottom_right_corner)
+
+    horizontal_distortion = (max(dist_top, dist_bottom) / min(dist_top, dist_bottom)) - 1
+    vertical_distortion = (max(dist_left, dist_right) / min(dist_left, dist_right)) - 1
+    diagonal_distortion = (max(dist_diagonal1, dist_diagonal2) / min(dist_diagonal1, dist_diagonal2)) - 1
+    distortion = horizontal_distortion + vertical_distortion + diagonal_distortion
+    print("{:.4f} + {:.4f} + {:.4f} = {:.4f}".format(horizontal_distortion, vertical_distortion, diagonal_distortion, distortion))
+
+    extracted_width = round((dist_top + dist_bottom) / 2)
+    extracted_height = round((dist_left + dist_right) / 2)
+    extracted_image = flipped_image.transform(
+        (extracted_width, extracted_height),
+        QUAD,
+        (top_left_corner.x, top_left_corner.y,
+         bottom_left_corner.x, bottom_left_corner.y,
+         bottom_right_corner.x, bottom_right_corner.y,
+         top_right_corner.x, top_right_corner.y),
+        BICUBIC)
+
+    cropped_image = crop(extracted_image, border=16)
+
+    cropped_image.save(output_filepath)

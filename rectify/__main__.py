@@ -2,7 +2,13 @@
 
 
 Usage:
-  rectify <input-filename> --output=<output-filename>
+  rectify <input-filename> --output=<output-filename> [--threshold=<brightness>]
+
+Options:
+  -h --help                   Show this screen
+  --version                   Show version
+  --output=<output-filename>  Path to output file.
+  --threshold=<brightness>    Slide mount boundary brightness 0-255. [default:32]
 """
 import sys
 
@@ -21,7 +27,8 @@ def main(argv=None):
     print(arguments)
     input_filepath = arguments['<input-filename>']
     output_filepath = arguments['--output']
-    process_image_file(input_filepath, output_filepath)
+    threshold = int(arguments['--threshold'])
+    process_image_file(input_filepath, output_filepath, threshold=threshold)
 
 if __name__ == '__main__':
     sys.exit(main())

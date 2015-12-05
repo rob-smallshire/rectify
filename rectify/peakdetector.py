@@ -24,7 +24,31 @@ def find_peak_base(sequence, maxima_index, minima_index):
     return base_point.index
 
 
+def is_minima(a, b, c):
+    """True if the series a, b, c has its minimum at b."""
+    return b < a and b < c
 
+def is_maxima(a, b, c):
+    """True if the series a, b, c has its maximum at b."""
+    return b > a and b > c
+
+
+def find_indexed_element_for_first_minimum(histogram):
+    return query(histogram)                              \
+           .copy_padded_triples()                        \
+           .select_with_index()                          \
+           .where(lambda item: is_minima(*item.element)) \
+           .select(a_('index'))                          \
+           .first_or_default(0)
+
+
+def find_indexed_element_for_first_maximum(histogram):
+    return query(histogram)                               \
+            .copy_padded_triples()                        \
+            .select_with_index()                          \
+            .where(lambda item: is_maxima(*item.element)) \
+            .select(a_('index'))                          \
+            .first_or_default(0)
 
 
 
