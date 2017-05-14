@@ -4,8 +4,6 @@ from PIL import Image
 from PIL.Image import QUAD, BICUBIC
 from PIL.ImageDraw import Draw
 from PIL.ImageOps import flip, grayscale, crop
-from asq.initiators import query
-from asq.selectors import a_
 from euclidian.cartesian2 import Line2, intersection2
 
 from rectify.mountdetector import (find_mount_top_boundary,
@@ -19,20 +17,20 @@ def draw_cross(context, position, radius, **kwargs):
     context.line((position.x, position.y - radius, position.x, position.y + radius), **kwargs)
 
 
-def draw():
-    boundary_image = flipped_image.copy()
-    draw = Draw(boundary_image)
-    draw.line((top_boundary_start.x, top_boundary_start.y, top_boundary_end.x, top_boundary_end.y), fill=(255, 255, 0), width=3)
-    draw.line((bottom_boundary_start.x, bottom_boundary_start.y, bottom_boundary_end.x, bottom_boundary_end.y), fill=(255, 255, 0), width=3)
-    draw.line((left_boundary_start.x, left_boundary_start.y, left_boundary_end.x, left_boundary_end.y), fill=(0, 255, 255), width=3)
-    draw.line((right_boundary_start.x, right_boundary_start.y, right_boundary_end.x, right_boundary_end.y), fill=(0, 255, 255), width=3)
-
-    draw_cross(draw, top_left_corner, radius=20, width=3, fill=(255, 0, 0))
-    draw_cross(draw, top_right_corner, radius=20, width=3, fill=(255, 0, 0))
-    draw_cross(draw, bottom_left_corner, radius=20, width=3, fill=(255, 0, 0))
-    draw_cross(draw, bottom_right_corner, radius=20, width=3, fill=(255, 0, 0))
-
-    boundary_image.save(output_filepath.replace('.jpg', '_boundary.jpg'))
+# def draw():
+#     boundary_image = flipped_image.copy()
+#     draw = Draw(boundary_image)
+#     draw.line((top_boundary_start.x, top_boundary_start.y, top_boundary_end.x, top_boundary_end.y), fill=(255, 255, 0), width=3)
+#     draw.line((bottom_boundary_start.x, bottom_boundary_start.y, bottom_boundary_end.x, bottom_boundary_end.y), fill=(255, 255, 0), width=3)
+#     draw.line((left_boundary_start.x, left_boundary_start.y, left_boundary_end.x, left_boundary_end.y), fill=(0, 255, 255), width=3)
+#     draw.line((right_boundary_start.x, right_boundary_start.y, right_boundary_end.x, right_boundary_end.y), fill=(0, 255, 255), width=3)
+#
+#     draw_cross(draw, top_left_corner, radius=20, width=3, fill=(255, 0, 0))
+#     draw_cross(draw, top_right_corner, radius=20, width=3, fill=(255, 0, 0))
+#     draw_cross(draw, bottom_left_corner, radius=20, width=3, fill=(255, 0, 0))
+#     draw_cross(draw, bottom_right_corner, radius=20, width=3, fill=(255, 0, 0))
+#
+#     boundary_image.save(output_filepath.replace('.jpg', '_boundary.jpg'))
 
 def process_image_file(input_filepath, output_filepath, threshold):
     """Rotate and crop image.

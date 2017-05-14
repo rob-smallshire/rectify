@@ -1,11 +1,8 @@
 from collections import deque
-from enum import Enum
-from itertools import chain
 
 from asq.extension import extend
 from asq.indexedelement import IndexedElement
 from asq.queryables import Queryable
-
 
 @extend(Queryable)
 def copy_padded_triples(self, selector=tuple):
