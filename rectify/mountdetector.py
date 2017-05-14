@@ -1,6 +1,7 @@
 import numpy
-from euclidian.cartesian2 import Point2, Line2
+from euclidian.cartesian2 import Point2
 from sklearn import linear_model
+
 
 def find_mount_top_boundary(gray_image, threshold=40):
     # Find the top edge by walking down on each row until we pass the threshhold

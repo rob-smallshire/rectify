@@ -13,6 +13,7 @@ from rectify.mountdetector import (find_mount_top_boundary,
                                    find_mount_left_boundary,
                                    find_mount_right_boundary)
 
+
 def draw_cross(context, position, radius, **kwargs):
     context.line((position.x - radius, position.y, position.x + radius, position.y), **kwargs)
     context.line((position.x, position.y - radius, position.x, position.y + radius), **kwargs)
